@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery ETA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z M3 7l9 4 9-4 M12 11v10" /></svg>
+      <span>Delivery ETA</span>
+    </div>
+    <a class="docs-link" href="/docs" target="_blank" rel="noopener">API docs</a>
+  </header>
+
+  <main class="layout">
+
+    <!-- ============ LEFT: the order form ============ -->
+    <form id="order-form" class="order" novalidate>
+      <h1>When will this order arrive?</h1>
+      <p class="lead">Fill in the order and the trained model estimates the delivery time in minutes.</p>
+
+      <div class="samples">
+        <span>Try a sample order:</span>
+        <button type="button" class="sample" data-sample="calm">Calm Sunday morning</button>
+        <button type="button" class="sample" data-sample="rush">Stormy rush hour</button>
+        <button type="button" class="sample" data-sample="jam">Van stuck in a jam</button>
+      </div>
+
+      <!-- Route -->
+      <fieldset>
+        <legend>Route</legend>
+        <div class="grid-2">
+          <div class="point">
+            <span class="point-name"><i class="dot dot-store"></i>Store</span>
+            <label>Latitude <input type="number" name="store_latitude" step="0.000001" required></label>
+            <label>Longitude <input type="number" name="store_longitude" step="0.000001" required></label>
+          </div>
+          <div class="point">
+            <span class="point-name"><i class="dot dot-drop"></i>Customer</span>
+            <label>Latitude <input type="number" name="drop_latitude" step="0.000001" required></label>
+            <label>Longitude <input type="number" name="drop_longitude" step="0.000001" required></label>
+          </div>
+        </div>
+        <label class="full">Order placed at <input type="datetime-local" name="order_time" required></label>
+      </fieldset>
+
+      <!-- Delivery partner -->
+      <fieldset>
+        <legend>Delivery partner</legend>
+        <div class="grid-2">
+          <label class="range">
+            <span>Age <output id="age-out">28</output></span>
+            <input type="range" name="agent_age" min="15" max="60" value="28">
+          </label>
+          <label class="range">
+            <span>Rating <output id="rating-out">4.7 ★</output></span>
+            <input type="range" name="agent_rating" min="1" max="5" step="0.1" value="4.7">
+          </label>
+        </div>
+        <div class="group" role="radiogroup" aria-label="Vehicle">
+          <span class="group-label">Vehicle</span>
+          <div class="chips" data-name="vehicle"></div>
+        </div>
+      </fieldset>
+
+      <!-- Conditions -->
+      <fieldset>
+        <legend>Conditions</legend>
+        <div class="group" role="radiogroup" aria-label="Traffic">
+          <span class="group-label">Traffic</span>
+          <div class="traffic" data-name="traffic"></div>
+        </div>
+        <div class="group" role="radiogroup" aria-label="Weather">
+          <span class="group-label">Weather</span>
+          <div class="chips" data-name="weather"></div>
+        </div>
+        <div class="group" role="radiogroup" aria-label="Area">
+          <span class="group-label">Area</span>
+          <div class="chips" data-name="area"></div>
+        </div>
+      </fieldset>
+
+      <!-- Parcel -->
+      <fieldset>
+        <legend>What's in the parcel?</legend>
+        <div class="categories" data-name="category" role="radiogroup" aria-label="Category"></div>
+      </fieldset>
+
+      <button type="submit" class="cta" id="submit-btn">Estimate delivery time</button>
+    </form>
+
+    <!-- ============ RIGHT: map + result ============ -->
+    <aside class="panel" aria-live="polite">
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 400 260" role="img" aria-label="Route from store to customer">
+          <defs>
+            <pattern id="blocks" width="40" height="40" patternUnits="userSpaceOnUse">
+              <rect width="40" height="40" fill="none" stroke="currentColor" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="400" height="260" fill="url(#blocks)" class="streets"/>
+          <path id="route-bg" d="" class="route-bg"/>
+          <path id="route" d="" class="route"/>
+          <circle id="rider" r="7" class="rider" cx="-20" cy="-20"/>
+          <g id="pin-store" class="pin pin-store"><circle r="9"/><text y="-16" text-anchor="middle">Store</text></g>
+          <g id="pin-drop" class="pin pin-drop"><circle r="9"/><text y="-16" text-anchor="middle">Customer</text></g>
+        </svg>
+        <div class="distance"><span id="distance">0.0</span> km along city blocks</div>
+      </div>
+
+      <div id="result" class="result is-idle">
+        <p class="idle-text">Your estimate will appear here.</p>
+
+        <div class="answer">
+          <p class="arrives-label">Arrives around</p>
+          <p class="arrives" id="arrival-time">--:--</p>
+          <p class="minutes"><span id="eta-minutes">0</span> minutes after the order</p>
+
+          <ol class="timeline">
+            <li><span>Order placed</span><strong id="t-start">--:--</strong></li>
+            <li><span>On the way</span><strong id="t-mid">--:--</strong></li>
+            <li><span>Delivered</span><strong id="t-end">--:--</strong></li>
+          </ol>
+        </div>
+
+        <p class="error" id="error" role="alert"></p>
+      </div>
+    </aside>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
